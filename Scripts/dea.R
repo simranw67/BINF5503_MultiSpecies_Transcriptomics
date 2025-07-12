@@ -5,7 +5,6 @@ library(readr)
 library(tidyverse)
 library(ggplot2)
 library(DESeq2)
-library(EnhancedVolcano)
 
 
 # Set your working directory; need to have a raw_counts folder in it 
@@ -115,7 +114,7 @@ dds <- DESeqDataSetFromMatrix(
 
 keep <- rowSums(counts(dds)) >= 10
 dds <- dds[keep, ]
-dds <- DESeq(dds)
+# dds <- DESeq(dds)
 
 # Loop through age and tissue combinations
 tissues <- c("liver", "brain", "skin")
