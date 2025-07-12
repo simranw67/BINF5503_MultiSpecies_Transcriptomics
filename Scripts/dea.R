@@ -130,21 +130,20 @@ plot_volcano_ggplot <- function(res, clock_genes, title = "") {
   
   res_df <- res_df %>% 
     mutate(
-      significiance = case_when(
+      significance = case_when(
         padj < 0.05 & abs(log2FoldChange) >= 1 & gene %in% clock_genes ~ "Significant Clock Gene",
-        padj < 0.05 & abs(log2FoldChange) >= 1 ~"Significant",
+        padj < 0.05 & abs(log2FoldChange) >= 1 ~ "Significant",
         TRUE ~ "Not Significant"
       ),
       is_clock = gene %in% clock_genes
-      
     )
-  #Plot
+  
   ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj))) +
-    geom+point(aes(color = significance), alpha = 0.6) + 
-    scale_color_manual(values = c("
-        Clock Gene (Significant)" = "#D55E00",
-        "Significant" = "#0072B2",
-        "Not Significant" = "gray70")) +
+    geom_point(aes(color = significance), alpha = 0.6) + 
+    scale_color_manual(values = c(
+      "Significant Clock Gene" = "#D55E00",
+      "Significant" = "#0072B2",
+      "Not Significant" = "gray70")) +
     geom_text(
       data = subset(res_df, padj < 0.05 & abs(log2FoldChange) > 1 & is_clock),
       aes(label = gene),
@@ -152,11 +151,10 @@ plot_volcano_ggplot <- function(res, clock_genes, title = "") {
     labs(
       title = title, 
       x = "Log2 Fold Change",
-      y =  "-Log10 Adjusted P-Value"
+      y = "-Log10 Adjusted P-Value"
     ) +
-    theme_minima()+
-    theme(legend.title = eleemnt_blank())
-  
+    theme_minimal() +
+    theme(legend.title = element_blank())
 }
 
 # Use in loop
@@ -164,16 +162,28 @@ plot_volcano_ggplot <- function(res, clock_genes, title = "") {
 all_results <- list()
 
 for (sp in species) {
-  dds_sub <- dds[, dds$species == sp]
-  dds_sub$age_group <- relevel(dds_sub$age_group, ref = "young")
-  design(dds_sub) <- ~ tissue + age_group + tissue:age_group
+  message("Running DESeq2 for species: ", sp)
   
+  dds_sub <- dds[, dds$species == sp]
+  dds_sub$age_group <- droplevels(dds_sub$age_group)
+  dds_sub$age_group <- relevel(dds_sub$age_group, ref = "young")
+  
+  design(dds_sub) <- ~ tissue + age_group + tissue:age_group
   keep <- rowSums(counts(dds_sub)) >= 10
   dds_sub <- dds_sub[keep, ]
   dds_sub <- DESeq(dds_sub)
   
-  for (tissue in tissue_list) {
-    contrast <- list(c("age_group_old", paste0("tissue", tissue, ".age_group_old")))
+  res_names <- resultsNames(dds_sub)
+  
+  for (tissue in tissues) {
+    interaction_term <- paste0("tissue", tissue, ".age_groupold")
+    if (!interaction_term %in% res_names) {
+      message("Interaction term not found: ", interaction_term)
+      next
+    }
+    
+    contrast <- list(c("age_group_old", interaction_term))
+    
     res <- results(dds_sub, contrast = contrast)
     res <- lfcShrink(dds_sub, contrast = contrast[[1]], res = res, type = "normal")
     
@@ -182,9 +192,10 @@ for (sp in species) {
     res_df$species <- sp
     res_df$tissue <- tissue
     
-    all_results[[paste(sp, tissue, sep = "_")]] <- res_df
+    key <- paste(sp, tissue, sep = "_")
+    all_results[[key]] <- res_df
     
-    plot_volcano_ggplot(res, clock_genes, title =  paste(sp, tissue, sep = " - "))
+    plot_volcano_ggplot(res, clock_genes, title = key)
   }
 }
 
