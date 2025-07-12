@@ -161,12 +161,12 @@ plot_volcano_ggplot <- function(res, clock_genes, title = "") {
   clock_layer <- res_df %>% filter(significance == "Significant Clock Gene")
   
   p <- ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj))) +
-    # Base layer first (circles and squares)
+    # Non-clock genes base layer
     geom_point(data = base_layer,
                aes(color = significance, shape = significance),
                size = 0.8, alpha = 0.7) +
     
-    # Clock genes on top (stars and triangles)
+    # Significant clock genes on top
     geom_point(data = clock_layer,
                aes(color = significance, shape = significance),
                size = 2, alpha = 1) +
@@ -182,9 +182,9 @@ plot_volcano_ggplot <- function(res, clock_genes, title = "") {
       "Not Significant" = "grey"
     )) +
     scale_shape_manual(values = c(
-      "Significant Clock Gene" = 18,   # diamond
-      "Significant" = 19,            # circle
-      "Not Significant" = 15         # square
+      "Significant Clock Gene" = 18, # diamond
+      "Significant" = 19, # circle
+      "Not Significant" = 15 # square
     )) +
     labs(title = title,
          x = "Log2 Fold Change",
