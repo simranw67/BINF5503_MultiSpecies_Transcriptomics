@@ -248,6 +248,43 @@ for (sp in species) {
   }
 }
 
+# ggsave(paste0("volcano_", sp, "_", tissue, ".pdf"), plot = p, width = 6, height = 5)
 
+### PCA of core clock gene expressions
 
-ggsave(paste0("volcano_", sp, "_", tissue, ".pdf"), plot = p, width = 6, height = 5)
+# variance stabilizing transformation
+vsd <- vst(dds, blind = TRUE) 
+vsd_mat <- assay(vsd)
+
+# subsetting clock genes
+clock_genes_present <- clock_genes[clock_genes %in% rownames(vsd_mat)]
+vsd_clock <- vsd_mat[clock_genes_present, ]
+
+# transpose vsd_clock
+vsd_clock_t <- t(vsd_clock)
+
+# actual PCA and combining with metadata
+pca_res <- prcomp(vsd_clock_t, scale. = TRUE)
+pca_df <- as.data.frame(pca_res$x)
+pca_df$sample <- rownames(pca_df)
+pca_df <- merge(pca_df, as.data.frame(colData(vsd)), by.x = "sample", by.y = "row.names")
+
+# GG that plot
+pca = ggplot(pca_df, aes(x = PC1, y = PC2, color = tissue, shape = species)) +
+  geom_point(size = 4, alpha = 0.8) +
+  scale_color_manual(values = c(
+    "brain" = "#FFC0CB",    
+    "skin"  = "#CD6090",  
+    "liver" = "#FDB863"   
+  )) +
+  labs(title = "PCA of Clock Gene Expression") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+ggsave(
+  filename = "volcano_plots/PCA_clock_genes.png",
+  plot = pca,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
